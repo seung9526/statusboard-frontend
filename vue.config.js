@@ -2,6 +2,7 @@ const { defineConfig } = require('@vue/cli-service')
 module.exports = defineConfig({
   transpileDependencies: true,
   lintOnSave: false,  // eslint 검사 안함
+  publicPath: '/',
   devServer: {
     port: 3000,
     proxy: {
