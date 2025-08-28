@@ -105,7 +105,7 @@ jobs:
         with:
           token: ${{ secrets.INFRA_REPO_TOKEN }}
           path: infra-repo
-          branch: ${{ steps.update.outputs.LOCAL_PR_BRANCH || env.LOCAL_PR_BRANCH }}
+          branch: chore/update-frontend-image-${{ env.SAFE_BRANCH }}-${{ env.TAG_SHA }} # 원격 브랜치가 없을 경우 생성 
           title: "chore(infra): FE image -> ${{ env.SAFE_BRANCH }}-latest"
           commit-message: "chore: FE image tag -> ${{ env.SAFE_BRANCH }}-latest"
           base: main
