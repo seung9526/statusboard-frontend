@@ -79,7 +79,7 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      # 1️⃣2️⃣ values.yaml 업데이트
+      # 1️⃣2️⃣ values.yaml 업데이트 및 로컬 브랜치 생성
       - name: Update frontend image tag in infra values
         working-directory: infra-repo
         run: |
@@ -91,6 +91,7 @@ jobs:
           fi
           git config user.name "github-actions"
           git config user.email "actions@github.com"
+          # 로컬 브랜치 생성 (origin 참조 없이)
           git checkout -b chore/update-frontend-image-${SAFE_BRANCH}-$(echo $TAG_SHA | cut -c1-7)
           git add $INFRA_VALUES_PATH
           git commit -m "chore: update frontend image tag to ${SAFE_BRANCH}-latest (from ${GITHUB_REPOSITORY}@${TAG_SHA})" || echo "No changes"
