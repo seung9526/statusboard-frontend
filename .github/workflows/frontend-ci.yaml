@@ -95,7 +95,6 @@ jobs:
 
           # 로컬 브랜치만 생성 (origin 참조 X)
           LOCAL_PR_BRANCH="chore/update-frontend-image-${SAFE_BRANCH}-$(echo $TAG_SHA | cut -c1-7)"
-          git checkout -b $LOCAL_PR_BRANCH
           git add $INFRA_VALUES_PATH
           git commit -m "chore: update frontend image tag to ${SAFE_BRANCH}-latest (from ${GITHUB_REPOSITORY}@${TAG_SHA})" || echo "No changes"
 
