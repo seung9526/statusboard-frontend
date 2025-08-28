@@ -41,7 +41,7 @@ jobs:
       # 5️⃣ 안전한 브랜치명 생성
       - name: Prepare safe branch name
         run: |
-          SAFE_BRANCH=${BRANCH//\//-}  # '/'를 '-'로 변환
+          SAFE_BRANCH=${BRANCH//\//-}
           echo "SAFE_BRANCH=$SAFE_BRANCH" >> $GITHUB_ENV
 
       # 6️⃣ Docker 이미지 빌드
@@ -89,10 +89,13 @@ jobs:
           else
             sed -i 's#^\(\s*frontend:\s*tag:\s*\).*$#\1'${SAFE_BRANCH}'-latest#' $INFRA_VALUES_PATH
           fi
+
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          # 로컬 브랜치 생성 (origin 참조 없이)
-          git checkout -b chore/update-frontend-image-${SAFE_BRANCH}-$(echo $TAG_SHA | cut -c1-7)
+
+          # 로컬 브랜치만 생성 (origin 참조 X)
+          LOCAL_PR_BRANCH="chore/update-frontend-image-${SAFE_BRANCH}-$(echo $TAG_SHA | cut -c1-7)"
+          git checkout -b $LOCAL_PR_BRANCH
           git add $INFRA_VALUES_PATH
           git commit -m "chore: update frontend image tag to ${SAFE_BRANCH}-latest (from ${GITHUB_REPOSITORY}@${TAG_SHA})" || echo "No changes"
 
@@ -102,7 +105,7 @@ jobs:
         with:
           token: ${{ secrets.INFRA_REPO_TOKEN }}
           path: infra-repo
-          branch: chore/update-frontend-image-${{ env.SAFE_BRANCH }}-${{ env.TAG_SHA }}
+          branch: ${{ steps.update.outputs.LOCAL_PR_BRANCH || env.LOCAL_PR_BRANCH }}
           title: "chore(infra): FE image -> ${{ env.SAFE_BRANCH }}-latest"
           commit-message: "chore: FE image tag -> ${{ env.SAFE_BRANCH }}-latest"
           base: main
