@@ -38,20 +38,26 @@ jobs:
       - name: Build FE
         run: npm run build
 
-      # 5️⃣ Docker 이미지 빌드
-      - name: Build Docker image
-        run: docker build -t ${{ env.IMAGE_NAME }}:${{ env.BRANCH }}-latest .
+      # 5️⃣ 안전한 브랜치명 생성 (Docker, Helm, PR용)
+      - name: Prepare safe branch name
+        run: |
+          SAFE_BRANCH=${BRANCH//\//-}  # '/'를 '-'로 변환
+          echo "SAFE_BRANCH=$SAFE_BRANCH" >> $GITHUB_ENV
 
-      # 6️⃣ Trivy 설치
+      # 6️⃣ Docker 이미지 빌드
+      - name: Build Docker image
+        run: docker build -t ${{ env.IMAGE_NAME }}:${{ env.SAFE_BRANCH }}-latest .
+
+      # 7️⃣ Trivy 설치
       - name: Setup Trivy
         uses: aquasecurity/setup-trivy@v0.2.1
 
-      # 7️⃣ Trivy로 Docker 이미지 스캔 (CRITICAL만 체크, unfixed 무시)
+      # 8️⃣ Trivy로 Docker 이미지 스캔 (CRITICAL만 체크, unfixed 무시)
       - name: Scan Docker image with Trivy
         run: |
-          trivy image --severity CRITICAL --exit-code 1 --ignore-unfixed --format table ${{ env.IMAGE_NAME }}:${{ env.BRANCH }}-latest
+          trivy image --severity CRITICAL --exit-code 1 --ignore-unfixed --format table ${{ env.IMAGE_NAME }}:${{ env.SAFE_BRANCH }}-latest
 
-      # 8️⃣ GHCR 로그인
+      # 9️⃣ GHCR 로그인
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -59,11 +65,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 9️⃣ Docker 이미지 푸시
+      # 🔟 Docker 이미지 푸시
       - name: Push Docker image
-        run: docker push ${{ env.IMAGE_NAME }}:${{ env.BRANCH }}-latest
+        run: docker push ${{ env.IMAGE_NAME }}:${{ env.SAFE_BRANCH }}-latest
 
-      # 🔟 infra 레포 체크아웃
+      # 1️⃣1️⃣ infra 레포 체크아웃
       - name: Checkout infra repo
         uses: actions/checkout@v3
         with:
@@ -73,35 +79,35 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      # 1️⃣1️⃣ values.yaml의 frontend.image.tag 업데이트
+      # 1️⃣2️⃣ values.yaml의 frontend.image.tag 업데이트
       - name: Update frontend image tag in infra values
         working-directory: infra-repo
         run: |
-          echo "Updating frontend.image.tag to ${BRANCH}-latest (sha: ${TAG_SHA:0:7})"
+          echo "Updating frontend.image.tag to ${SAFE_BRANCH}-latest (sha: ${TAG_SHA:0:7})"
           if command -v yq >/dev/null 2>&1; then
-            yq -i '.frontend.image.tag = strenv(BRANCH) + "-latest"' $INFRA_VALUES_PATH
+            yq -i '.frontend.image.tag = strenv(SAFE_BRANCH) + "-latest"' $INFRA_VALUES_PATH
           else
-            sed -i 's#^\(\s*frontend:\s*tag:\s*\).*$#\1'${BRANCH}'-latest#' $INFRA_VALUES_PATH
+            sed -i 's#^\(\s*frontend:\s*tag:\s*\).*$#\1'${SAFE_BRANCH}'-latest#' $INFRA_VALUES_PATH
           fi
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git checkout -b chore/update-frontend-image-${BRANCH}-$(echo $TAG_SHA | cut -c1-7)
+          git checkout -b chore/update-frontend-image-${SAFE_BRANCH}-$(echo $TAG_SHA | cut -c1-7)
           git add $INFRA_VALUES_PATH
-          git commit -m "chore: update frontend image tag to ${BRANCH}-latest (from ${GITHUB_REPOSITORY}@${TAG_SHA})" || echo "No changes"
+          git commit -m "chore: update frontend image tag to ${SAFE_BRANCH}-latest (from ${GITHUB_REPOSITORY}@${TAG_SHA})" || echo "No changes"
 
-      # 1️⃣2️⃣ infra 레포에 PR 생성
+      # 1️⃣3️⃣ infra 레포에 PR 생성
       - name: Create PR to infra
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.INFRA_REPO_TOKEN }}
           path: infra-repo
-          branch: chore/update-frontend-image-${{ env.BRANCH }}-${{ env.TAG_SHA }}
-          title: "chore(infra): FE image -> ${{ env.BRANCH }}-latest"
-          commit-message: "chore: FE image tag -> ${{ env.BRANCH }}-latest"
+          branch: chore/update-frontend-image-${{ env.SAFE_BRANCH }}-${{ env.TAG_SHA }}
+          title: "chore(infra): FE image -> ${{ env.SAFE_BRANCH }}-latest"
+          commit-message: "chore: FE image tag -> ${{ env.SAFE_BRANCH }}-latest"
           base: main
           body: |
             Frontend Docker image updated by CI/CD.
             - Repo: ${{ github.repository }}
             - Commit: ${{ env.TAG_SHA }}
-            - Tag: ${{ env.BRANCH }}-latest
+            - Tag: ${{ env.SAFE_BRANCH }}-latest
           labels: ci, frontend
