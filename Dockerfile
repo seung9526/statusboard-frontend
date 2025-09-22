@@ -17,8 +17,8 @@ FROM nginx:stable-alpine
 # 빌드 결과물을 Nginx html 디렉토리로 복사
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
-# 필요하면 기본 Nginx 설정 그대로 사용
-# COPY nginx.conf /etc/nginx/nginx.conf
+# 주석을 해제하여 SPA용 설정을 적용합니다
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # 컨테이너 포트 오픈
 EXPOSE 80
